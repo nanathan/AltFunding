@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using KSP.UI.Screens;
 
 namespace AltFunding
 {
@@ -10,6 +11,7 @@ namespace AltFunding
     public class AltFundingAddon : MonoBehaviour
     {
         private IButton button;
+        private ApplicationLauncherButton stockButton;
         private bool visible;
         private Rect position = new Rect(400, 200, 300, 100);
         private int windowId = 9653;
@@ -33,6 +35,15 @@ namespace AltFunding
                 button.ToolTip = "AltFunding";
                 button.Enabled = true;
                 button.OnClick += (e) => { ToggleVisibility(); };
+            }
+            else
+            {
+                Texture2D texture = GameDatabase.Instance.GetTexture("AltFunding/icon38", false);
+                if(texture != null)
+                {
+                    stockButton = ApplicationLauncher.Instance.AddModApplication(
+                        ToggleVisibility, ToggleVisibility, null, null, null, null, ApplicationLauncher.AppScenes.SPACECENTER, texture);
+                }
             }
         }
 
@@ -150,6 +161,11 @@ namespace AltFunding
             {
                 button.Destroy();
                 button = null;
+            }
+            if(stockButton != null)
+            {
+                ApplicationLauncher.Instance.RemoveModApplication(stockButton);
+                stockButton = null;
             }
         }
     }
