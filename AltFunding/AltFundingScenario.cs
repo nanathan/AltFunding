@@ -86,6 +86,15 @@ namespace AltFunding
             {
                 lastPayoutTime = -1;
             }
+
+            if(gameNode.HasValue("lastPayoutAmount") && double.TryParse(gameNode.GetValue("lastPayoutAmount"), out v))
+            {
+                lastPayoutAmount = v;
+            }
+            else
+            {
+                lastPayoutAmount = 0;
+            }
         }
 
         public override void OnSave(ConfigNode gameNode)
@@ -97,6 +106,7 @@ namespace AltFunding
             }
 
             gameNode.SetValue("lastPayoutTime", lastPayoutTime.ToString(), true);
+            gameNode.SetValue("lastPayoutAmount", lastPayoutAmount.ToString(), true);
         }
     }
 }

@@ -80,7 +80,7 @@ namespace AltFunding
 
                 GUILayout.Label("Last Payout:", GUILayout.ExpandWidth(true));
                 GUILayout.Label(string.Format("${0:F0}", payout), GUILayout.ExpandWidth(true));
-                GUILayout.Label(string.Format("Y{0} D{1} ({2}/{3})", lastPayout.Year, lastPayout.DayOfYear, lastPayout.Month, lastPayout.Day),
+                GUILayout.Label(string.Format("Year {0} Day {1}", lastPayout.Year, lastPayout.DayOfYear),
                     GUILayout.ExpandWidth(true));
                 GUILayout.Label(" ");
             }
@@ -90,7 +90,7 @@ namespace AltFunding
 
             GUILayout.Label("Next Payout:", GUILayout.ExpandWidth(true));
             GUILayout.Label(string.Format("${0:F0}", payout), GUILayout.ExpandWidth(true));
-            GUILayout.Label(string.Format("Y{0} D{1} ({2}/{3})", nextPayout.Year, nextPayout.DayOfYear, nextPayout.Month, nextPayout.Day),
+            GUILayout.Label(string.Format("Year {0} Day {1}", nextPayout.Year, nextPayout.DayOfYear),
                 GUILayout.ExpandWidth(true));
             GUILayout.Label(" ");
 
