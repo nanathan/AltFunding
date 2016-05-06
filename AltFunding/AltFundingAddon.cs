@@ -13,8 +13,11 @@ namespace AltFunding
         private IButton button;
         private ApplicationLauncherButton stockButton;
         private bool visible;
-        private Rect position = new Rect(400, 200, 300, 100);
+        private Rect position = new Rect(400, 200, 250, 100);
         private int windowId = 9653;
+
+        private GUIStyle alignLeft;
+        private GUIStyle alignRight;
 
         public void Start()
         {
@@ -70,6 +73,14 @@ namespace AltFunding
                 return;
             }
 
+            if(alignRight == null)
+            {
+                alignLeft = GUI.skin.label;
+                alignLeft.alignment = TextAnchor.MiddleLeft;
+                alignRight = new GUIStyle(alignLeft);
+                alignRight.alignment = TextAnchor.MiddleRight;
+            }
+
             AltFundingScenario s = AltFundingScenario.Instance;
             FundingCalculator calculator = s.config.GetCalculator();
             if(calculator == null)
@@ -91,9 +102,11 @@ namespace AltFunding
                 payout = AltFundingScenario.Instance.lastPayoutAmount;
 
                 GUILayout.Label("Last Payout:", GUILayout.ExpandWidth(true));
-                GUILayout.Label(string.Format("${0:F0}", payout), GUILayout.ExpandWidth(true));
+                GUILayout.BeginHorizontal();
                 GUILayout.Label(string.Format("Year {0} Day {1}", lastPayout.Year, lastPayout.DayOfYear),
-                    GUILayout.ExpandWidth(true));
+                    alignLeft, GUILayout.Width(125));
+                GUILayout.Label(string.Format("${0:F0}", payout), alignRight, GUILayout.ExpandWidth(true));
+                GUILayout.EndHorizontal();
                 GUILayout.Label(" ");
             }
 
@@ -101,17 +114,21 @@ namespace AltFunding
             payout = calculator.GetPayment((int) Math.Round(nextPayout.UT / payPeriod));
 
             GUILayout.Label("Next Payout:", GUILayout.ExpandWidth(true));
-            GUILayout.Label(string.Format("${0:F0}", payout), GUILayout.ExpandWidth(true));
+            GUILayout.BeginHorizontal();
             GUILayout.Label(string.Format("Year {0} Day {1}", nextPayout.Year, nextPayout.DayOfYear),
-                GUILayout.ExpandWidth(true));
+                alignLeft, GUILayout.Width(125));
+            GUILayout.Label(string.Format("${0:F0}", payout), alignRight, GUILayout.ExpandWidth(true));
+            GUILayout.EndHorizontal();
             GUILayout.Label(" ");
 
             double timeToPayout = nextPayout.UT - Planetarium.GetUniversalTime();
             Date toNextPayout = Calendar.FromUT(timeToPayout);
 
-            GUILayout.Label("Time to Next Payout:", GUILayout.ExpandWidth(true));
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Next Payout:", alignLeft, GUILayout.Width(125));
             GUILayout.Label(string.Format("{0}d {1:00}:{2:00}:{3:00}", toNextPayout.DayOfYear - 1, toNextPayout.Hour, toNextPayout.Minute, toNextPayout.Second),
-                GUILayout.ExpandWidth(true));
+                alignRight, GUILayout.ExpandWidth(true));
+            GUILayout.EndHorizontal();
 
             GUILayout.EndVertical();
 
