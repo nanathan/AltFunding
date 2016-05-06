@@ -5,10 +5,46 @@ using UnityEngine;
 
 namespace AltFunding
 {
+    public abstract class FundingCalculator
+    {
+        public double payPeriod;
+
+        protected FundingCalculator()
+        {
+            payPeriod = 648000;
+        }
+
+        public abstract int GetPayment(int paymentNumber);
+        public virtual void ApplyPaymentSideEffects() { }
+
+        public virtual void LoadConfig(ConfigNode node)
+        {
+            ConfigUtilities.TryParseConfig(this, node);
+
+            if(payPeriod < 60.0)
+            {
+                payPeriod = 648000;
+            }
+        }
+
+        internal virtual void Log() { }
+    }
+
     public class FundingConfig
     {
         public string mode;
         public BasicFunding basicFunding = new BasicFunding();
+        public RepFunding repFunding = new RepFunding();
+
+        public FundingCalculator GetCalculator()
+        {
+            if(mode == "BasicFunding")
+                return basicFunding;
+            else if(mode == "RepFunding")
+                return repFunding;
+
+            return null;
+        }
 
         public void LoadConfig(ConfigNode node)
         {
@@ -20,20 +56,26 @@ namespace AltFunding
 
                 basicFunding.LoadConfig(bf);
             }
+            if(node.HasNode("RepFunding"))
+            {
+                ConfigNode rf = node.GetNode("RepFunding");
+
+                repFunding.LoadConfig(rf);
+            }
         }
 
         internal void Log()
         {
             Debug.Log(string.Format("[AltFunding] mode {0}", mode));
             basicFunding.Log();
+            repFunding.Log();
         }
     }
 
-    public class BasicFunding
+    public class BasicFunding : FundingCalculator
     {
         // n-th payment
         // a + b*n + c*n^.5 + d*ln(n)
-        public double payPeriod;
         public double paymentNumberMultiplier;
         public double paymentNumberOffset;
         public double basePay;
@@ -41,29 +83,85 @@ namespace AltFunding
         public double sqrtPay;
         public double logarithmicPay;
 
-        private const double THRESHOLD = 1e-9;
+        protected const double THRESHOLD = 1e-9;
 
-        public int GetPayment(int paymentNumber)
+        public override int GetPayment(int paymentNumber)
+        {
+            double amount = 0;
+            ApplyBasicMultipliers(ref amount, paymentNumber);
+            return (int) amount;
+        }
+        
+        protected void ApplyBasicMultipliers(ref double amount, int paymentNumber)
         {
             double n = paymentNumber * paymentNumberMultiplier + paymentNumberOffset;
-            double amount = basePay;
+            if(Math.Abs(basePay) > THRESHOLD)
+                amount += basePay;
             if(Math.Abs(linearPay) > THRESHOLD)
                 amount += linearPay * n;
             if(Math.Abs(sqrtPay) > THRESHOLD)
                 amount += sqrtPay * Math.Sqrt(n);
             if(Math.Abs(logarithmicPay) > THRESHOLD)
                 amount += logarithmicPay * Math.Log(n);
+        }
+
+        internal override void Log()
+        {
+            Debug.Log(string.Format("[AltFunding] BasicFunding: {0} {1} {2} {3} {4}", payPeriod, basePay, linearPay, sqrtPay, logarithmicPay));
+        }
+    }
+
+    public class RepFunding : BasicFunding
+    {
+        public double repBonusPaymentRate;
+        public double repBonusPaymentThreshold;
+        public double repCostRate;
+
+        public override int GetPayment(int paymentNumber)
+        {
+            double amount = 0;
+            ApplyBasicMultipliers(ref amount, paymentNumber);
+            ApplyRepMultipliers(ref amount);
             return (int) amount;
         }
 
-        public void LoadConfig(ConfigNode node)
+        protected void ApplyRepMultipliers(ref double amount)
         {
-            ConfigUtilities.TryParseConfig(this, node);
+            double rep = reputation;
+            if(rep > THRESHOLD && repBonusPaymentRate > THRESHOLD)
+                amount += rep * repBonusPaymentRate;
         }
 
-        internal void Log()
+        public override void ApplyPaymentSideEffects()
         {
-            Debug.Log(string.Format("[AltFunding] {0} {1} {2} {3} {4}", payPeriod, basePay, linearPay, sqrtPay, logarithmicPay));
+            double rep = reputation;
+            if(rep > THRESHOLD && repCostRate > THRESHOLD)
+            {
+                float cost = (float) (-1.0 * rep * repCostRate);
+                float before = Reputation.Instance.reputation;
+                Reputation.Instance.AddReputation(cost, TransactionReasons.None);
+                float after = Reputation.Instance.reputation;
+                Debug.Log(string.Format("[AltFunding] Reputation went from {0:F3} to {1:F3} (cost {2:F4})", before, after, cost));
+            }
+        }
+
+        internal override void Log()
+        {
+            base.Log();
+            Debug.Log(string.Format("[AltFunding] RepFunding: {0} {1} {2}", repBonusPaymentRate, repBonusPaymentThreshold, repCostRate));
+        }
+
+        protected double reputation
+        {
+            get
+            {
+                double rep = Reputation.Instance.reputation;
+                if(repBonusPaymentThreshold > THRESHOLD)
+                {
+                    rep -= repBonusPaymentThreshold;
+                }
+                return rep;
+            }
         }
     }
 

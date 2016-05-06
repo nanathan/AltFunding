@@ -65,10 +65,22 @@ namespace AltFunding
 
         internal void DrawWindow(int wid)
         {
-            GUILayout.BeginVertical();
+            if(Time.timeSinceLevelLoad < 1)
+            {
+                return;
+            }
 
             AltFundingScenario s = AltFundingScenario.Instance;
-            double payPeriod = s.config.basicFunding.payPeriod;
+            FundingCalculator calculator = s.config.GetCalculator();
+            if(calculator == null)
+            {
+                visible = false;
+                return;
+            }
+
+            GUILayout.BeginVertical();
+
+            double payPeriod = calculator.payPeriod;
             Date date = Calendar.Now;
 
             double payout;
@@ -76,7 +88,7 @@ namespace AltFunding
             if(s.lastPayoutAmount > 0 && s.lastPayoutTime > 0)
             {
                 Date lastPayout = AltFundingScenario.LastPayoutDate;
-                payout = s.config.basicFunding.GetPayment((int) Math.Round(s.lastPayoutTime / payPeriod));
+                payout = AltFundingScenario.Instance.lastPayoutAmount;
 
                 GUILayout.Label("Last Payout:", GUILayout.ExpandWidth(true));
                 GUILayout.Label(string.Format("${0:F0}", payout), GUILayout.ExpandWidth(true));
@@ -86,7 +98,7 @@ namespace AltFunding
             }
 
             Date nextPayout = AltFundingScenario.NextPayoutDate;
-            payout = s.config.basicFunding.GetPayment((int) Math.Round(nextPayout.UT / payPeriod));
+            payout = calculator.GetPayment((int) Math.Round(nextPayout.UT / payPeriod));
 
             GUILayout.Label("Next Payout:", GUILayout.ExpandWidth(true));
             GUILayout.Label(string.Format("${0:F0}", payout), GUILayout.ExpandWidth(true));
@@ -118,10 +130,11 @@ namespace AltFunding
             if(AltFundingScenario.Instance != null)
             {
                 AltFundingScenario s = AltFundingScenario.Instance;
-                
-                if(s.config.mode == "BasicFunding")
+                FundingCalculator calculator = s.config.GetCalculator();
+
+                if(calculator != null)
                 {
-                    double payPeriod = s.config.basicFunding.payPeriod;
+                    double payPeriod = calculator.payPeriod;
 
                     if(s.lastPayoutTime < 0)
                     {
@@ -138,12 +151,14 @@ namespace AltFunding
                     if(payoutTime < now)
                     {
                         Debug.Log("[AltFunding] Prior funds " + Funding.Instance.Funds);
-                        double payout = s.config.basicFunding.GetPayment((int)Math.Round(payoutTime / payPeriod));
+                        double payout = calculator.GetPayment((int)Math.Round(payoutTime / payPeriod));
                         Debug.Log("[AltFunding] Adding funds " + payout);
                         Funding.Instance.AddFunds(payout, TransactionReasons.None);
                         s.lastPayoutTime = payoutTime;
                         s.lastPayoutAmount = payout;
                         Debug.Log("[AltFunding] Post funds " + Funding.Instance.Funds);
+
+                        calculator.ApplyPaymentSideEffects();
                     }
                 }
                 else
