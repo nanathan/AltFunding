@@ -19,7 +19,7 @@ namespace AltFunding
         public static Date LastPayoutDate { get { return Calendar.FromUT(Instance.lastPayoutTime); } }
         public static Date NextPayoutDate { get { return Calendar.FromUT(Instance.lastPayoutTime + Instance.payoutPeriod); } }
 
-        private double payoutPeriod { get { return Instance.config.basicFunding.payPeriod; } }
+        private double payoutPeriod { get { return Instance.config.GetCalculator().payPeriod; } }
 
         public static void Initialize()
         {
