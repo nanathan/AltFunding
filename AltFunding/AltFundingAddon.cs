@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using KSP.UI;
 using KSP.UI.Screens;
 
 namespace AltFunding
@@ -13,8 +14,9 @@ namespace AltFunding
         private IButton button;
         private ApplicationLauncherButton stockButton;
         private bool visible;
-        private Rect position = new Rect(400, 200, 250, 100);
-        private int windowId = 9653;
+
+        private BundledAssets assets;
+        private BudgetWindow budgetWindow;
 
         private GUIStyle alignLeft;
         private GUIStyle alignRight;
@@ -28,8 +30,6 @@ namespace AltFunding
                 Destroy(this);
                 return;
             }
-
-            AltFundingScenario.Initialize();
 
             if(ToolbarManager.ToolbarAvailable)
             {
@@ -48,91 +48,33 @@ namespace AltFunding
                         ToggleVisibility, ToggleVisibility, null, null, null, null, ApplicationLauncher.AppScenes.SPACECENTER, texture);
                 }
             }
+            
+            assets = FindObjectOfType<BundledAssets>();
+            if(assets == null)
+            {
+                GameObject go = new GameObject("AltFundingBundledAssets");
+                assets = go.AddComponent<BundledAssets>();
+            }
         }
 
         private void ToggleVisibility()
         {
-            visible = !visible;
-            position.height = 100;
-        }
-
-        internal void OnGUI()
-        {
-            if(visible)
+            if(!assets.Loaded)
             {
-                GUI.skin = HighLogic.Skin;
-
-                position = GUILayout.Window(windowId, position, DrawWindow, "AltFunding", GUILayout.ExpandHeight(true));
-            }
-        }
-
-        internal void DrawWindow(int wid)
-        {
-            if(Time.timeSinceLevelLoad < 1)
-            {
+                Debug.Log("[AltFunding] Cannot display UI because AssetBundle has not finished loading!");
                 return;
             }
-
-            if(alignRight == null)
+            if(budgetWindow == null)
             {
-                alignLeft = GUI.skin.label;
-                alignLeft.alignment = TextAnchor.MiddleLeft;
-                alignRight = new GUIStyle(alignLeft);
-                alignRight.alignment = TextAnchor.MiddleRight;
+                GameObject go = new GameObject("AltFundingBudgetWindow");
+                budgetWindow = go.AddComponent<BudgetWindow>();
+                budgetWindow.assets = assets;
             }
-
-            AltFundingScenario s = AltFundingScenario.Instance;
-            FundingCalculator calculator = s.config.GetCalculator();
-            if(calculator == null)
+            else
             {
-                visible = false;
-                return;
+                Destroy(budgetWindow.gameObject);
+                budgetWindow = null;
             }
-
-            GUILayout.BeginVertical();
-
-            double payPeriod = calculator.payPeriod;
-            Date date = Calendar.Now;
-
-            double payout;
-
-            if(s.lastPayoutAmount > 0 && s.lastPayoutTime > 0)
-            {
-                Date lastPayout = AltFundingScenario.LastPayoutDate;
-                payout = AltFundingScenario.Instance.lastPayoutAmount;
-
-                GUILayout.Label("Last Payout:", GUILayout.ExpandWidth(true));
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(string.Format("Year {0} Day {1}", lastPayout.Year, lastPayout.DayOfYear),
-                    alignLeft, GUILayout.Width(125));
-                GUILayout.Label(string.Format("${0:F0}", payout), alignRight, GUILayout.ExpandWidth(true));
-                GUILayout.EndHorizontal();
-                GUILayout.Label(" ");
-            }
-
-            Date nextPayout = AltFundingScenario.NextPayoutDate;
-            payout = calculator.GetPayment((int) Math.Round(nextPayout.UT / payPeriod));
-
-            GUILayout.Label("Next Payout:", GUILayout.ExpandWidth(true));
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(string.Format("Year {0} Day {1}", nextPayout.Year, nextPayout.DayOfYear),
-                alignLeft, GUILayout.Width(125));
-            GUILayout.Label(string.Format("${0:F0}", payout), alignRight, GUILayout.ExpandWidth(true));
-            GUILayout.EndHorizontal();
-            GUILayout.Label(" ");
-
-            double timeToPayout = nextPayout.UT - Planetarium.GetUniversalTime();
-            Date toNextPayout = Calendar.FromUT(timeToPayout);
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Next Payout:", alignLeft, GUILayout.Width(125));
-            GUILayout.Label(string.Format("{0}d {1:00}:{2:00}:{3:00}", toNextPayout.DayOfYear - 1, toNextPayout.Hour, toNextPayout.Minute, toNextPayout.Second),
-                alignRight, GUILayout.ExpandWidth(true));
-            GUILayout.EndHorizontal();
-
-            GUILayout.EndVertical();
-
-            GUI.DragWindow();
         }
 
         public void Update()
@@ -152,7 +94,7 @@ namespace AltFunding
                 if(calculator != null)
                 {
                     double payPeriod = calculator.payPeriod;
-
+                    
                     if(s.lastPayoutTime < 0)
                     {
                         Debug.Log("[AltFunding] Last payout < 0, catching up");
@@ -171,8 +113,7 @@ namespace AltFunding
                         double payout = calculator.GetPayment((int)Math.Round(payoutTime / payPeriod));
                         Debug.Log("[AltFunding] Adding funds " + payout);
                         Funding.Instance.AddFunds(payout, TransactionReasons.None);
-                        s.lastPayoutTime = payoutTime;
-                        s.lastPayoutAmount = payout;
+                        s.AddPaymentHistory(payoutTime, payout, Funding.Instance.Funds);
                         Debug.Log("[AltFunding] Post funds " + Funding.Instance.Funds);
 
                         calculator.ApplyPaymentSideEffects();
@@ -198,6 +139,16 @@ namespace AltFunding
             {
                 ApplicationLauncher.Instance.RemoveModApplication(stockButton);
                 stockButton = null;
+            }
+            if(budgetWindow != null)
+            {
+                Destroy(budgetWindow.gameObject);
+                budgetWindow = null;
+            }
+            if(assets != null)
+            {
+                Destroy(assets.gameObject);
+                assets = null;
             }
         }
     }

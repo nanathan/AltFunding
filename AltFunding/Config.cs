@@ -32,15 +32,21 @@ namespace AltFunding
 
     public class FundingConfig
     {
+        public static readonly string MODE_BASIC_FUNDING = "BasicFunding";
+        public static readonly string MODE_REP_FUNDING = "RepFunding";
+
+        public static readonly string[] modes = { MODE_BASIC_FUNDING, MODE_REP_FUNDING };
+
         public string mode;
+        public bool locked;
         public BasicFunding basicFunding = new BasicFunding();
         public RepFunding repFunding = new RepFunding();
 
         public FundingCalculator GetCalculator()
         {
-            if(mode == "BasicFunding")
+            if(mode == MODE_BASIC_FUNDING)
                 return basicFunding;
-            else if(mode == "RepFunding")
+            else if(mode == MODE_REP_FUNDING)
                 return repFunding;
 
             return null;
@@ -50,15 +56,15 @@ namespace AltFunding
         {
             ConfigUtilities.TryParseConfig(this, node);
 
-            if(node.HasNode("BasicFunding"))
+            if(node.HasNode(MODE_BASIC_FUNDING))
             {
-                ConfigNode bf = node.GetNode("BasicFunding");
+                ConfigNode bf = node.GetNode(MODE_BASIC_FUNDING);
 
                 basicFunding.LoadConfig(bf);
             }
-            if(node.HasNode("RepFunding"))
+            if(node.HasNode(MODE_REP_FUNDING))
             {
-                ConfigNode rf = node.GetNode("RepFunding");
+                ConfigNode rf = node.GetNode(MODE_REP_FUNDING);
 
                 repFunding.LoadConfig(rf);
             }
@@ -170,6 +176,7 @@ namespace AltFunding
         public static void TryParseConfig(System.Object obj, ConfigNode node)
         {
             double v;
+            bool b;
             foreach(FieldInfo field in obj.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
                 if(field.FieldType == typeof(double))
@@ -184,6 +191,13 @@ namespace AltFunding
                     if(node.HasValue(field.Name))
                     {
                         field.SetValue(obj, node.GetValue(field.Name));
+                    }
+                }
+                else if(field.FieldType == typeof(bool))
+                {
+                    if(node.HasValue(field.Name) && bool.TryParse(node.GetValue(field.Name), out b))
+                    {
+                        field.SetValue(obj, b);
                     }
                 }
             }
